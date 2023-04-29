@@ -19,10 +19,7 @@
 #ifndef __CANFIX_H
 #define __CANFIX_H
 
-#include "can.h"
-
-#define EE_NODE 0x00
-#define EE_BITRATE 0x01
+#include <Arduino.h>
 
 //Bitrate definitions for the can_init() function
 #define BITRATE_125  0
@@ -53,6 +50,13 @@
 #define FCB_QUALITY   0x02;
 #define FCB_FAIL      0x04;
 
+typedef struct {
+  unsigned int id;
+  byte length;
+  byte data[8];
+} CanFixFrame;
+
+
 class CFParameter {
     public:
         word type;
@@ -69,30 +73,33 @@ class CFParameter {
 
 class CanFix {
     private:
-        byte deviceid, fw_version;  //Node identification information
+        byte deviceid, nodeid, fw_version;  //Node identification information
         unsigned long model;  //Model number for node identification
-        CAN *can;             // Pointer to CAN object
-        byte writeFrame(CanFrame frame, byte mode);
-        void parameterEnable(CanFrame frame);
-        void handleNodeSpecific(CanFrame frame);
-        void handleFrame(CanFrame frame);
+        byte writeFrame(CanFixFrame frame);
+        void parameterEnable(CanFixFrame frame);
+        void handleNodeSpecific(CanFixFrame frame);
+        void handleFrame(CanFixFrame frame);
 
         //Function Pointers for Callbacks
-        void (*report_callback)(void);
-        byte (*twoway_callback)(byte, word);
-        byte (*config_callback)(word, byte *);
-        byte (*query_callback)(word, byte *, byte *);
-        void (*param_callback)(CFParameter);
-        void (*alarm_callback)(byte, word, byte*, byte);
-        void (*stream_callback)(byte, byte *, byte);
+        void (*__write_callback)(CanFixFrame);
+        void (*__report_callback)(void);
+        byte (*__twoway_callback)(byte, word);
+        byte (*__config_callback)(word, byte *);
+        byte (*__query_callback)(word, byte *, byte *);
+        void (*__param_callback)(CFParameter);
+        void (*__alarm_callback)(byte, word, byte*, byte);
+        void (*__stream_callback)(byte, byte *, byte);
+        void (*__bitrate_set_callback)(byte);
+        void (*__node_set_callback)(byte);
+
+
     public:
-        CanFix(byte pin, byte device);
+        CanFix(byte device);
         // Communication and Event dispatcher
-        void exec(void);
+        void exec(CanFixFrame frame);
         // Property Functions
-        byte getNodeNumber(void);
-        int getBitRate(void);
-        void setBitRate(int bitrate);
+        void setNodeNumber(byte id);
+        void setDeviceId(byte id);
         void setModel(unsigned long m);
         void setFwVersion(byte v);
 
@@ -103,6 +110,7 @@ class CanFix {
         void sendStream(byte channel, byte *data, byte length);
 
         // Callback function assignments
+        void set_write_callback(void (*write_callback)(CanFixFrame));
         void set_report_callback(void (*report_callback)(void));
         void set_twoway_callback(byte (*twoway_callback)(byte, word));
         void set_config_callback(byte (*config_callback)(word, byte *));
@@ -110,6 +118,8 @@ class CanFix {
         void set_param_callback(void (*param_callback)(CFParameter));
         void set_alarm_callback(void (*alarm_callback)(byte, word, byte*, byte));
         void set_stream_callback(void (*stream_callback)(byte, byte *, byte));
+        void set_bitrate_callback(void (*bitrate_callback)(byte));
+        void set_node_callback(void (*node_callback)(byte));
 
         // Utility Functions
         byte checkParameterEnable(word id);

@@ -57,7 +57,8 @@ CanFix::CanFix(byte id) {
     __stream_callback = NULL;
     __bitrate_set_callback = NULL;
     __node_set_callback = NULL;
-
+    __parameter_enable_callback = NULL;
+    __parameter_query_callback = NULL;
 }
 
 /* This is a wrapper for the write frame callback function.  If
@@ -68,8 +69,11 @@ byte CanFix::writeFrame(CanFixFrame frame) {
     }
 }
 
+// This function deals with the node specific messages for enabling and disabling
+// parameters.  It calls the callback function with either
+// with the appropriate data and sends the response frame.
 void CanFix::parameterEnable(CanFixFrame frame) {
-    byte index, offset, result;
+    byte result;
     int x;
     CanFixFrame rframe; //Response frame
 
@@ -79,27 +83,21 @@ void CanFix::parameterEnable(CanFixFrame frame) {
 
     x = frame.data[2];
     x |= frame.data[3] << 8;
-    index = x/8;
-    offset = x%8;
     rframe.length = 3;
-    /* Check Range */
+    /* Check Range - and send error if necessary*/
     if(x<256 || x>1759) {
         rframe.data[2]=0x01;
         writeFrame(rframe);
         return;
     }
-    rframe.data[2]=0x00;
-    //result = EEPROM.read(index);
-    if(frame.data[1]==NSM_DISABLE) {
-        if(!bitRead(result, offset)) {  //If the bit is clear
-            bitSet(result, offset);
-            //EEPROM.write(index, result);
-        }
-    } else {  //Enable command - doesn't respond to broadcast
-        if(bitRead(result,offset) && frame.data[0]!=0x00) { //If the bit is set
-            bitClear(result,offset);
-            //EEPROM.write(index, result);
-        }
+    if(__parameter_enable_callback != NULL) {
+        //  Call the callback with the id of hte parameter and either 0 or 1
+        //  Since NSM_DISABLE is 3 and NSM_ENABLE is 4 we can subtract to
+        //  get the right value.  The receiver should return 0x00 if successful
+        //  and 0x01 if the parameter is unknown.
+        rframe.data[2] = __parameter_enable_callback(x, frame.data[1]-NSM_DISABLE);
+    } else { // No callback we'll assume that we don't have any parameters and return error
+        rframe.data[2] = 0x01; // Return Erorr if no callback
     }
     writeFrame(rframe);
 }
@@ -306,9 +304,19 @@ void CanFix::sendStatus(word type, byte *data, byte length) {
     writeFrame(frame);
 }
 
+// Used to send the parameter given by p.  This will also check the parameter
+// enable / disable status if the callback is defined
 void CanFix::sendParam(CFParameter p) {
+    byte result;
     byte n;
     CanFixFrame frame;
+
+    // if the query callback is defined and it returns 0x00 then we bail
+    // otherwise we send the parameter
+    if(__parameter_query_callback != NULL && __parameter_query_callback(p.type) == 0x00) {
+        return;
+    }
+
     frame.id = p.type;
     frame.data[0] = nodeid;
     frame.data[1] = p.index;
@@ -354,15 +362,18 @@ void CanFix::set_stream_callback(void (*f)(byte, byte *, byte)) {
     __stream_callback = f;
 }
 
-/* Returns non-zero if the parameter is enabled */
-byte CanFix::checkParameterEnable(word id) {
-    byte index, offset, result;
-    index = id / 8;
-    offset = id % 8;
-    //result = EEPROM.read(index);
-    if(bitRead(result, offset)) {
-        return 0;
-    } else {
-        return 1;
-    }
+void CanFix::set_bitrate_callback(void (*f)(byte)) {
+    __bitrate_set_callback = f;
+}
+
+void CanFix::set_node_callback(void (*f)(byte)) {
+    __node_set_callback = f;
+}
+
+void CanFix::set_parameter_enable_callback(byte (*f)(word, byte)) {
+    __parameter_enable_callback = f;
+}
+
+void CanFix::set_parameter_query_callback(byte (*f)(word)) {
+    __parameter_query_callback = f;
 }

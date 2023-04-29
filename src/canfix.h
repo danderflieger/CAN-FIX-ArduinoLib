@@ -91,7 +91,8 @@ class CanFix {
         void (*__stream_callback)(byte, byte *, byte);
         void (*__bitrate_set_callback)(byte);
         void (*__node_set_callback)(byte);
-
+        byte (*__parameter_enable_callback)(unsigned int, byte);
+        byte (*__parameter_query_callback)(unsigned int);
 
     public:
         CanFix(byte device);
@@ -110,19 +111,18 @@ class CanFix {
         void sendStream(byte channel, byte *data, byte length);
 
         // Callback function assignments
-        void set_write_callback(void (*write_callback)(CanFixFrame));
-        void set_report_callback(void (*report_callback)(void));
-        void set_twoway_callback(byte (*twoway_callback)(byte, word));
-        void set_config_callback(byte (*config_callback)(word, byte *));
-        void set_query_callback(byte (*query_callback)(word, byte *, byte *));
-        void set_param_callback(void (*param_callback)(CFParameter));
-        void set_alarm_callback(void (*alarm_callback)(byte, word, byte*, byte));
-        void set_stream_callback(void (*stream_callback)(byte, byte *, byte));
-        void set_bitrate_callback(void (*bitrate_callback)(byte));
-        void set_node_callback(void (*node_callback)(byte));
-
-        // Utility Functions
-        byte checkParameterEnable(word id);
+        void set_write_callback(void (*f)(CanFixFrame));
+        void set_report_callback(void (*f)(void));
+        void set_twoway_callback(byte (*f)(byte, word));
+        void set_config_callback(byte (*f)(word, byte *));
+        void set_query_callback(byte (*f)(word, byte *, byte *));
+        void set_param_callback(void (*f)(CFParameter));
+        void set_alarm_callback(void (*f)(byte, word, byte*, byte));
+        void set_stream_callback(void (*f)(byte, byte *, byte));
+        void set_bitrate_callback(void (*f)(byte));
+        void set_node_callback(void (*f)(byte));
+        void set_parameter_enable_callback(byte (*f)(word, byte));
+        void set_parameter_query_callback(byte (*f)(word));
 };
 
 #endif  //__CANFIX_H

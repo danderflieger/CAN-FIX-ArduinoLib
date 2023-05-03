@@ -3,6 +3,8 @@
 #include <canfix.h>
 #include <mcp_can.h>
 #include <mcp_can_dfs.h>
+#include <Wire.h>
+#include <SPI.h>
 
 #define CAN0_INT 2
 MCP_CAN CAN0(10);
@@ -11,8 +13,9 @@ CanFix cf(0x77);
 
 unsigned long now;
 unsigned long lasttime;
-unsigned int airspeed;
-bool countup;
+unsigned int airspeed = 1300;
+unsigned int verticalspeed;
+bool countup[10];
 
 
 void setup() {
@@ -43,16 +46,16 @@ void loop() {
 
   now = millis();
 
-  if (now - lasttime > 100) {
+  if (now - lasttime > 150) {
     
-    if (airspeed <= 0) {
-      countup = true;
-    } else if (airspeed >= 1000) {
-      countup = false;
+    if (airspeed <= 60) {
+      countup[0] = true;
+    } else if (airspeed >= 1600) {
+      countup[0] = false;
     }
 
-    if (countup) airspeed += 10;
-    else airspeed -= 10;
+    if (countup[0]) airspeed += 5;
+    else airspeed -= 5;
     
     CanFixFrame frame;
 
@@ -69,13 +72,24 @@ void loop() {
     pIndicatedAirspeed.type = 0x18D;
     cf.sendParam(pIndicatedAirspeed);
 
+
+    if (verticalspeed <= 0) {
+      countup[1] = true;
+    } else if (verticalspeed >= 1000) {
+      countup[1] = false;
+    }
+
+    if (countup[1]) verticalspeed += 10;
+    else verticalspeed -= 10;
+
     CFParameter pVerticalSpeed;
     pVerticalSpeed.type = 0x186;
     pVerticalSpeed.index = 0x00;
     pVerticalSpeed.fcb = 0x00;
-    pVerticalSpeed.data[0] = 1;
-    pVerticalSpeed.data[1] = 0;
-    pVerticalSpeed.length = 5;
+    pVerticalSpeed.data[0] = verticalspeed;
+    pVerticalSpeed.data[1] = verticalspeed>>8;
+    pVerticalSpeed.data[2] = verticalspeed>>16;
+    pVerticalSpeed.length = 6;
     cf.sendParam(pVerticalSpeed);
 
     CFParameter pTurnRate;
@@ -101,6 +115,27 @@ void loop() {
     pCylinderHeadTemperature.data[1] = 0x06;
     cf.sendParam(pCylinderHeadTemperature);
 
+    pCylinderHeadTemperature.index = 0x02;
+    pCylinderHeadTemperature.data[0] = 0xAC;
+    pCylinderHeadTemperature.data[1] = 0x05;
+    cf.sendParam(pCylinderHeadTemperature);
+
+    pCylinderHeadTemperature.index = 0x03;
+    pCylinderHeadTemperature.data[0] = 0xCD;
+    pCylinderHeadTemperature.data[1] = 0x07;
+    cf.sendParam(pCylinderHeadTemperature);
+
+
+    // float temperature = bmp.readTemperature();
+    // unsigned int oiltemp = temperature * 10;
+    // CFParameter pOilTemp;
+    // pOilTemp.type = 0x222;
+    // pOilTemp.index = 0x00;
+    // pOilTemp.fcb = 0x00;
+    // pOilTemp.data[0] = oiltemp;
+    // pOilTemp.data[1] = oiltemp>>8;
+    // pOilTemp.length = 5;
+    // cf.sendParam(pOilTemp);
 
     lasttime = now;
   }

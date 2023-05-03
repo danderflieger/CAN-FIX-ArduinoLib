@@ -12,9 +12,12 @@ MCP_CAN CAN0(10);
 CanFix cf(0x77);
 
 unsigned long now;
-unsigned long lasttime;
-unsigned int airspeed = 1300;
+// create a few variables to mark when different sensors trigger a CAN message
+unsigned long airSpeedTimer, verticalSpeedTimer, turnRateTimer, cylinderHeadTempTimer;
+
+unsigned int airspeed;
 unsigned int verticalspeed;
+unsigned int altimeterSetting;
 bool countup[10];
 
 
@@ -36,9 +39,26 @@ void setup() {
   pinMode(CAN0_INT, INPUT);
 
   Serial.println("MCP2515 Initialized Successfully!");
-  now = millis();
-  lasttime = now;
-  airspeed = 30;
+  
+  // initialize all of the timer variables to whatever millis() returns (probably like 100 or something)
+  airSpeedTimer = verticalSpeedTimer = turnRateTimer = cylinderHeadTempTimer = now = millis();
+
+  // initialize airspeed reading so it doesn't count from zero
+  airspeed = 1300;
+
+  // publish the altimeterSetting
+  altimeterSetting = 29970;
+  CFParameter pAltimeterSetting;
+  pAltimeterSetting.type = 0x190;
+  pAltimeterSetting.index = 0x00;
+  pAltimeterSetting.fcb = 0x00;
+  pAltimeterSetting.data[0] = altimeterSetting;
+  pAltimeterSetting.data[1] = altimeterSetting>>8;
+  pAltimeterSetting.length = 5;
+
+  cf.sendParam(pAltimeterSetting);
+
+  
 
 }
 
@@ -46,7 +66,7 @@ void loop() {
 
   now = millis();
 
-  if (now - lasttime > 150) {
+  if (now - airSpeedTimer > 50) {
     
     if (airspeed <= 60) {
       countup[0] = true;
@@ -72,7 +92,12 @@ void loop() {
     pIndicatedAirspeed.type = 0x18D;
     cf.sendParam(pIndicatedAirspeed);
 
+    airSpeedTimer = now;
 
+  }
+
+  if (now - verticalSpeedTimer > 150) {
+    
     if (verticalspeed <= 0) {
       countup[1] = true;
     } else if (verticalspeed >= 1000) {
@@ -91,6 +116,11 @@ void loop() {
     pVerticalSpeed.data[2] = verticalspeed>>16;
     pVerticalSpeed.length = 6;
     cf.sendParam(pVerticalSpeed);
+    verticalSpeedTimer = now;
+
+  }
+
+  if (now - turnRateTimer > 100) {
 
     CFParameter pTurnRate;
     pTurnRate.type = 0x403;
@@ -101,6 +131,21 @@ void loop() {
     pTurnRate.length = 5;
     cf.sendParam(pTurnRate);
 
+    turnRateTimer = now;
+
+    CFParameter pYawAngle;
+    pYawAngle.type = 0x189;
+    pYawAngle.index = 0x00;
+    pYawAngle.fcb = 0x00;
+    pYawAngle.data[0] = 0x08;
+    pYawAngle.data[1] = 0xFF;
+    pYawAngle.length = 5;
+    cf.sendParam(pYawAngle);
+
+  }
+    
+  if (now - cylinderHeadTempTimer > 500) {
+        
     CFParameter pCylinderHeadTemperature;
     pCylinderHeadTemperature.type = 0x500;
     pCylinderHeadTemperature.index = 0x00;
@@ -125,6 +170,12 @@ void loop() {
     pCylinderHeadTemperature.data[1] = 0x07;
     cf.sendParam(pCylinderHeadTemperature);
 
+    cylinderHeadTempTimer = now;
+  }
+
+
+
+
 
     // float temperature = bmp.readTemperature();
     // unsigned int oiltemp = temperature * 10;
@@ -137,8 +188,8 @@ void loop() {
     // pOilTemp.length = 5;
     // cf.sendParam(pOilTemp);
 
-    lasttime = now;
-  }
+    
+  
   
   
 

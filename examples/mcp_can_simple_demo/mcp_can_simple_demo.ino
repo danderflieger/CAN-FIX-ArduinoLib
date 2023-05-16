@@ -1,17 +1,19 @@
 #include <canfix.h>
 #include <mcp_can.h>
 #include <mcp_can_dfs.h>
+
 #include <Wire.h>
 #include <SPI.h>
 
-// #include <Adafruit_BMP280.h>
-// #define BMP280_ADDRESS 0x76
-// Adafruit_BMP280 bmp;
+#include <Adafruit_BMP280.h>
+#define BMP280_ADDRESS 0x76
+Adafruit_BMP280 bmp;
 
 #define CAN0_INT 2
-MCP_CAN CAN0(10);
+// MCP_CAN CAN0(10); // MCP2515 module (8Mhz)
+MCP_CAN CAN0(17); // All-in-one (16Mhz)
 
-CanFix cf(0x77);
+CanFix cf(0x82);
 
 unsigned long now;
 unsigned long lasttime;
@@ -25,13 +27,13 @@ volatile float currentinHg = 30.01;
 
 void setup() {
   Serial.begin(115200);
-  cf.setDeviceId(0x77);
+  cf.setDeviceId(0x82);
   cf.setModel(0x12345);
   cf.setFwVersion(2);
 
   cf.set_write_callback(can_write_callback);
   
-  while(CAN0.begin(MCP_ANY, CAN_250KBPS, MCP_8MHZ) != CAN_OK) {
+  while(CAN0.begin(MCP_ANY, CAN_250KBPS, MCP_16MHZ) != CAN_OK) {
     Serial.println("Unable to begin CAN0");
     delay(1000);
   }
@@ -41,9 +43,9 @@ void setup() {
   // else
   //   Serial.println("Error Initializing MCP2515...");
 
-  CAN0.setMode(MCP_NORMAL);
+  // CAN0.setMode(MCP_NORMAL);
 
-  pinMode(CAN0_INT, INPUT);
+  // pinMode(CAN0_INT, INPUT);
   // pinMode(3, INPUT_PULLUP);
   // pinMode(4, INPUT_PULLUP);
 
@@ -56,7 +58,7 @@ void setup() {
   airspeed = 30;
 
   unsigned status;
-  // status = bmp.begin(0x76);
+  status = bmp.begin(0x76);
 }
 
 void loop() {
@@ -164,14 +166,16 @@ void loop() {
     // for both Bytes. data[0] uses the first 8 bits, but data[1] uses bit shifting for the seconds set of bits: airspeed>>8. 
     // This tells the Arduino to use the last 8 bits of the airspeed integer as a second Byte value. 
     // Bit shifting is beyond the scope of this demo. Watch a YouTube video about it if you want to learn more. 
-    
+    Serial.println(airspeed);
     pIndicatedAirspeed.data[0] = airspeed;
     pIndicatedAirspeed.data[1] = airspeed>>8;
+    pIndicatedAirspeed.data[2] = airspeed>>16;
+    pIndicatedAirspeed.data[3] = airspeed>>24;
 
     // Now we indicate how many total Bytes of data we plan to send to the FiX Gateway. 1 for message type (IAS), 1 for index, 1 for FCB,
     // and 2 for the actual data. That's a total of 5 Bytes
     
-    pIndicatedAirspeed.length = 5;
+    pIndicatedAirspeed.length = 7;
 
     // Now that our CFParameter named "pIndicatedAirspeed" is complete, we'll send it out to the CAN bus where the FiX Gateway will
     // injest it and the pyEfis screen will display it.
@@ -245,7 +249,9 @@ void loop() {
     pTurnRate.fcb = 0x00;
     pTurnRate.data[0] = 0x08;
     pTurnRate.data[1] = 0x00;
-    pTurnRate.length = 5;
+    pTurnRate.data[2] = 0x00;
+    pTurnRate.data[3] = 0x00;
+    pTurnRate.length = 7;
     cf.sendParam(pTurnRate);
 
 
@@ -260,7 +266,9 @@ void loop() {
     pLateralAcceleration.type = 0x18B;
     pLateralAcceleration.data[0] = lateralacceleration;
     pLateralAcceleration.data[1] = lateralacceleration>>8;
-    pLateralAcceleration.length = 5;
+    pLateralAcceleration.data[2] = lateralacceleration>>16;
+    pLateralAcceleration.data[3] = lateralacceleration>>24;
+    pLateralAcceleration.length = 7;
     cf.sendParam(pLateralAcceleration);
 
 
@@ -271,7 +279,9 @@ void loop() {
     pCylinderHeadTemperature.fcb = 0x00;
     pCylinderHeadTemperature.data[0] = 0xAA;
     pCylinderHeadTemperature.data[1] = 0x06;
-    pCylinderHeadTemperature.length = 2;
+    pCylinderHeadTemperature.data[1] = 0x00;
+    pCylinderHeadTemperature.data[1] = 0x00;
+    pCylinderHeadTemperature.length = 7;
     cf.sendParam(pCylinderHeadTemperature);
 
     pCylinderHeadTemperature.index = 0x01;
@@ -296,7 +306,9 @@ void loop() {
     pRPM.fcb = 0x00;
     pRPM.data[0] = 0b11111111;
     pRPM.data[1] = 0b00000100;
-    pRPM.length = 2;
+    pRPM.data[2] = 0x00;
+    pRPM.data[3] = 0x00;
+    pRPM.length = 7;
     cf.sendParam(pRPM);
 
     CFParameter pMAP;
@@ -305,19 +317,19 @@ void loop() {
     pRPM.fcb = 0x00;
     pRPM.data[0] = 2987;
     pRPM.data[1] = 2987>>8;
-    pRPM.length = 2;
+    pRPM.length = 5;
     cf.sendParam(pRPM);
 
-    // float temperature = bmp.readTemperature();
-    // unsigned int oiltemp = temperature * 10;
-    // CFParameter pOilTemp;
-    // pOilTemp.type = 0x222;
-    // pOilTemp.index = 0x00;
-    // pOilTemp.fcb = 0x00;
-    // pOilTemp.data[0] = oiltemp;
-    // pOilTemp.data[1] = oiltemp>>8;
-    // pOilTemp.length = 5;
-    // cf.sendParam(pOilTemp);
+    float temperature = bmp.readTemperature();
+    unsigned int oiltemp = temperature * 10;
+    CFParameter pOilTemp;
+    pOilTemp.type = 0x222;
+    pOilTemp.index = 0x00;
+    pOilTemp.fcb = 0x00;
+    pOilTemp.data[0] = oiltemp;
+    pOilTemp.data[1] = oiltemp>>8;
+    pOilTemp.length = 5;
+    cf.sendParam(pOilTemp);
 
 
     // float currentinHg = 30.01;
@@ -334,9 +346,9 @@ void loop() {
     pAltimeterSetting.length = 5;
     cf.sendParam(pAltimeterSetting);
 
-    // float meters = bmp.readAltitude(currentMillibars);
+    float meters = bmp.readAltitude(currentMillibars);
 
-    // signed long indicatedAltitude = meters * 3.2804; //convert to feet
+    signed long indicatedAltitude = meters * 3.2804; //convert to feet
 
     // Serial.print("currentkPa: ");
     // Serial.print(currentkPa);
@@ -346,16 +358,16 @@ void loop() {
     // Serial.println(indicatedaltitude);
 
 
-    // CFParameter pIndicatedAltitude;
-    // pIndicatedAltitude.type = 0x184;
-    // pIndicatedAltitude.index = 0x00;
-    // pIndicatedAltitude.fcb = 0x00;
-    // pIndicatedAltitude.data[0] = indicatedAltitude;
-    // pIndicatedAltitude.data[1] = indicatedAltitude>>8;
-    // pIndicatedAltitude.data[2] = indicatedAltitude>>16;
-    // pIndicatedAltitude.data[3] = indicatedAltitude>>24;
-    // pIndicatedAltitude.length = 7;
-    // cf.sendParam(pIndicatedAltitude);
+    CFParameter pIndicatedAltitude;
+    pIndicatedAltitude.type = 0x184;
+    pIndicatedAltitude.index = 0x00;
+    pIndicatedAltitude.fcb = 0x00;
+    pIndicatedAltitude.data[0] = indicatedAltitude;
+    pIndicatedAltitude.data[1] = indicatedAltitude>>8;
+    pIndicatedAltitude.data[2] = indicatedAltitude>>16;
+    pIndicatedAltitude.data[3] = indicatedAltitude>>24;
+    pIndicatedAltitude.length = 7;
+    cf.sendParam(pIndicatedAltitude);
 
     lasttime = now;
   }
@@ -373,44 +385,44 @@ void can_write_callback(CanFixFrame frame) {
 }
 
 
-void ai1() {
-  if (digitalRead(4) == LOW) {
-    // counter++;
-    currentinHg -= 0.01;
-  } else {
-    // counter--;
-    currentinHg += 0.01;
-  }
-}
+// void ai1() {
+//   if (digitalRead(4) == LOW) {
+//     // counter++;
+//     currentinHg -= 0.01;
+//   } else {
+//     // counter--;
+//     currentinHg += 0.01;
+//   }
+// }
 
-void sendPitchAngle(float angle) {
-  CFParameter p;
-  int x;
+// void sendPitchAngle(float angle) {
+//   CFParameter p;
+//   int x;
 
-  p.type = 0x180;
-  p.index = 0;
-  p.fcb = 0x00;
-  x = angle*100;
-  p.data[0] = x;
-  p.data[1] = x>>8;
-  p.length = 2;
+//   p.type = 0x180;
+//   p.index = 0;
+//   p.fcb = 0x00;
+//   x = angle*100;
+//   p.data[0] = x;
+//   p.data[1] = x>>8;
+//   p.length = 5;
 
-  cf.sendParam(p);
-}
+//   cf.sendParam(p);
+// }
 
-void sendRollAngle(float angle) {
-  CFParameter p;
-  int x;
+// void sendRollAngle(float angle) {
+//   CFParameter p;
+//   int x;
 
-  p.type = 0x181;
-  p.index = 0;
-  p.fcb = 0x00;
-  x = angle*100;
-  p.data[0] = x;
-  p.data[1] = x>>8;
-  p.length = 2;
+//   p.type = 0x181;
+//   p.index = 0;
+//   p.fcb = 0x00;
+//   x = angle*100;
+//   p.data[0] = x;
+//   p.data[1] = x>>8;
+//   p.length = 5;
 
-  cf.sendParam(p);
-}
+//   cf.sendParam(p);
+// }
 
 

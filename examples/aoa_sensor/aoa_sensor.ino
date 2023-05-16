@@ -8,17 +8,17 @@
 #include <SPI.h>
 #include <AS5600.h>
 
-// define where in EEPROM the saved values are located (NOT the angles, just where they are 
-// located in the EEPROM chip - each reading is a Float value, which is 4 bytes long)
+// // define where in EEPROM the saved values are located (NOT the angles, just where they are 
+// // located in the EEPROM chip - each reading is a Float value, which is 4 bytes long)
 #define EEPROM_ZERO_G_POSITION  0x00
 #define EEPROM_WARN_POSITION    0x05
 #define EEPROM_STALL_POSITION   0x10
 
-#define META_MIN      0b00010000
-#define META_MAX      0b00100000
-#define META_ZERO_G   0b01110000
-#define META_WARN     0b10000000
-#define META_STALL    0b10010000
+// #define META_MIN      0b00010000
+// #define META_MAX      0b00100000
+#define META_ZERO_G  0x70 //0b01110000
+#define META_WARN    0x80  //0b10000000
+#define META_STALL   0x90 //0b10010000
 #define CAN0_INT      2
 MCP_CAN CAN0(10);
 
@@ -102,7 +102,7 @@ void loop() {
     // read the message and assign parts to the variables above
     CAN0.readMsgBuf(&rxId, &len, rxBuf);
     if ((rxId & 0x80000000) != 0x80000000) {
-      Serial.println(rxId, HEX);
+      // Serial.println(rxId, HEX);
       
       // Check to see if the message id is 0x30F, which is undefined in the
       // CANFIX spec - e.g., we can use it for other things like, say, 
@@ -129,14 +129,18 @@ void loop() {
         if (buttonId == 0x00) {  
           writeEEPROM(EEPROM_ZERO_G_POSITION , rawAnglePitch);
           setMeta(META_ZERO_G, pitchAngle);
+          Serial.println("0g Meta message sent ...");
         } else if (buttonId == 0x01) {
           writeEEPROM(EEPROM_WARN_POSITION, pitchAngle);
-          // setMeta(META_WARN, pitchAngle);
+          setMeta(META_WARN, pitchAngle);
+          Serial.println("Warn Meta message sent ...");
         } else if (buttonId == 0x02) {
           writeEEPROM(EEPROM_STALL_POSITION, pitchAngle);
-          // setMeta(META_STALL, pitchAngle);
+          setMeta(META_STALL, pitchAngle);
+          Serial.println("Stall Meta message sent ...");
         } else {
           // Do nothing, not expecting whatever data we received
+          Serial.println("Trying to send a Meta value change, but buttonId given ...");
         }
         
         // if (frame.id == 0x30F) {

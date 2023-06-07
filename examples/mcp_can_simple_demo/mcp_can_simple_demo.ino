@@ -19,8 +19,18 @@ unsigned long now;
 unsigned long lasttime;
 unsigned int airspeed = 1300;
 signed int verticalspeed;
+signed int turnrate;
 signed int lateralacceleration;
-bool countup[10];
+unsigned int cylinderheadtemperature[4] = {0,0,0,0};
+unsigned int exhaustgastemperature[4] = {0,0,0,0};
+unsigned int rpm;
+unsigned int fuelquantity = 0;
+unsigned int fuelflow = 0;
+unsigned int fuelpressure = 4000;
+unsigned int oilpressure = 3000;
+unsigned int voltage = 0;
+unsigned int amps = 0;
+bool countup[15];
 volatile unsigned int counter = 0;
 volatile float currentinHg = 30.01;
 
@@ -166,7 +176,7 @@ void loop() {
     // for both Bytes. data[0] uses the first 8 bits, but data[1] uses bit shifting for the seconds set of bits: airspeed>>8. 
     // This tells the Arduino to use the last 8 bits of the airspeed integer as a second Byte value. 
     // Bit shifting is beyond the scope of this demo. Watch a YouTube video about it if you want to learn more. 
-    Serial.println(airspeed);
+    // Serial.println(airspeed);
     pIndicatedAirspeed.data[0] = airspeed;
     pIndicatedAirspeed.data[1] = airspeed>>8;
     pIndicatedAirspeed.data[2] = airspeed>>16;
@@ -242,22 +252,32 @@ void loop() {
     cf.sendParam(pVerticalSpeed);
 
     
+    if (turnrate <= -10) {
+      countup[2] = true;
+    } else if (turnrate >= 10) {
+      countup[2] = false;
+    }
+
+    // Again, increment or decrement the value by 10 depending on whether the demo is counting up or down
+    
+    if (countup[2]) turnrate += 1;
+    else turnrate -= 1;   
 
     CFParameter pTurnRate;
     pTurnRate.type = 0x403;
     pTurnRate.index = 0x00;
     pTurnRate.fcb = 0x00;
-    pTurnRate.data[0] = 0x08;
-    pTurnRate.data[1] = 0x00;
-    pTurnRate.data[2] = 0x00;
-    pTurnRate.data[3] = 0x00;
+    pTurnRate.data[0] = turnrate;
+    pTurnRate.data[1] = turnrate>>8;
+    pTurnRate.data[2] = turnrate>>16;
+    pTurnRate.data[3] = turnrate>>24;
     pTurnRate.length = 7;
     cf.sendParam(pTurnRate);
 
 
-    if (lateralacceleration < -250.0) countup[4] = true;
-    if (lateralacceleration > 250.0) countup[4] = false;
-    if (countup[4]) lateralacceleration += 10;
+    if (lateralacceleration < -250.0) countup[3] = true;
+    if (lateralacceleration > 250.0) countup[3] = false;
+    if (countup[3]) lateralacceleration += 10;
     else lateralacceleration -= 10;
 
     CFParameter pLateralAcceleration;
@@ -273,41 +293,130 @@ void loop() {
 
 
 
+    if (cylinderheadtemperature[0] <= 1) countup[4] = true;
+    if (cylinderheadtemperature[0] > 2800) countup[4] = false;
+    
+    if (countup[4]) {
+      cylinderheadtemperature[0] += 100;
+      cylinderheadtemperature[1] += 100;
+      cylinderheadtemperature[2] += 100;
+      cylinderheadtemperature[3] += 100;
+    } else {
+      cylinderheadtemperature[0] -= 100;
+      cylinderheadtemperature[1] -= 100;
+      cylinderheadtemperature[2] -= 100;
+      cylinderheadtemperature[3] -= 100;
+    } 
+
+    ConvertCelsiusToFahrenheit(cylinderheadtemperature[0]);
+    ConvertCelsiusToFahrenheit(cylinderheadtemperature[1]);
+    ConvertCelsiusToFahrenheit(cylinderheadtemperature[2]);
+    ConvertCelsiusToFahrenheit(cylinderheadtemperature[3]);
+
     CFParameter pCylinderHeadTemperature;
     pCylinderHeadTemperature.type = 0x500;
     pCylinderHeadTemperature.index = 0x00;
     pCylinderHeadTemperature.fcb = 0x00;
-    pCylinderHeadTemperature.data[0] = 0xAA;
-    pCylinderHeadTemperature.data[1] = 0x06;
-    pCylinderHeadTemperature.data[1] = 0x00;
-    pCylinderHeadTemperature.data[1] = 0x00;
+    pCylinderHeadTemperature.data[0] = cylinderheadtemperature[0];
+    pCylinderHeadTemperature.data[1] = cylinderheadtemperature[0]>>8;
+    pCylinderHeadTemperature.data[2] = cylinderheadtemperature[0]>>16;
+    pCylinderHeadTemperature.data[3] = cylinderheadtemperature[0]>>24;
     pCylinderHeadTemperature.length = 7;
     cf.sendParam(pCylinderHeadTemperature);
 
     pCylinderHeadTemperature.index = 0x01;
-    pCylinderHeadTemperature.data[0] = 0xCC;
-    pCylinderHeadTemperature.data[1] = 0x06;
+    pCylinderHeadTemperature.data[0] = cylinderheadtemperature[1];
+    pCylinderHeadTemperature.data[1] = cylinderheadtemperature[1]>>8;
+    pCylinderHeadTemperature.data[2] = cylinderheadtemperature[1]>>16;
+    pCylinderHeadTemperature.data[3] = cylinderheadtemperature[1]>>24;
     cf.sendParam(pCylinderHeadTemperature);
 
     pCylinderHeadTemperature.index = 0x02;
-    pCylinderHeadTemperature.data[0] = 0xAC;
-    pCylinderHeadTemperature.data[1] = 0x05;
+    pCylinderHeadTemperature.data[0] = cylinderheadtemperature[2];
+    pCylinderHeadTemperature.data[1] = cylinderheadtemperature[2]>>8;
+    pCylinderHeadTemperature.data[2] = cylinderheadtemperature[2]>>16;
+    pCylinderHeadTemperature.data[3] = cylinderheadtemperature[2]>>24;
     cf.sendParam(pCylinderHeadTemperature);
 
     pCylinderHeadTemperature.index = 0x03;
-    pCylinderHeadTemperature.data[0] = 0xCD;
-    pCylinderHeadTemperature.data[1] = 0x07;
+    pCylinderHeadTemperature.data[0] = cylinderheadtemperature[3];
+    pCylinderHeadTemperature.data[1] = cylinderheadtemperature[3]>>8;
+    pCylinderHeadTemperature.data[2] = cylinderheadtemperature[3]>>16;
+    pCylinderHeadTemperature.data[3] = cylinderheadtemperature[3]>>24;
     cf.sendParam(pCylinderHeadTemperature);
 
+
+
+
+    if (exhaustgastemperature[0] <= 1) countup[5] = true;
+    if (exhaustgastemperature[0] > 5000) countup[5] = false;
+    
+    if (countup[5]) {
+      exhaustgastemperature[0] += 150;
+      exhaustgastemperature[1] += 150;
+      exhaustgastemperature[2] += 150;
+      exhaustgastemperature[3] += 150;
+    } else {
+      exhaustgastemperature[0] -= 150;
+      exhaustgastemperature[1] -= 150;
+      exhaustgastemperature[2] -= 150;
+      exhaustgastemperature[3] -= 150;
+    } 
+
+    ConvertCelsiusToFahrenheit(exhaustgastemperature[0]);
+    ConvertCelsiusToFahrenheit(exhaustgastemperature[1]);
+    ConvertCelsiusToFahrenheit(exhaustgastemperature[2]);
+    ConvertCelsiusToFahrenheit(exhaustgastemperature[3]);
+
+    CFParameter pExhaustGasTemperature;
+    pExhaustGasTemperature.type = 0x502;
+    pExhaustGasTemperature.index = 0x00;
+    pExhaustGasTemperature.fcb = 0x00;
+    pExhaustGasTemperature.data[0] = exhaustgastemperature[0];
+    pExhaustGasTemperature.data[1] = exhaustgastemperature[0]>>8;
+    pExhaustGasTemperature.data[2] = exhaustgastemperature[0]>>16;
+    pExhaustGasTemperature.data[3] = exhaustgastemperature[0]>>24;
+    pExhaustGasTemperature.length = 7;
+    cf.sendParam(pExhaustGasTemperature);
+
+    pExhaustGasTemperature.index = 0x01;
+    pExhaustGasTemperature.data[0] = exhaustgastemperature[1];
+    pExhaustGasTemperature.data[1] = exhaustgastemperature[1]>>8;
+    pExhaustGasTemperature.data[2] = exhaustgastemperature[1]>>16;
+    pExhaustGasTemperature.data[3] = exhaustgastemperature[1]>>24;
+    cf.sendParam(pExhaustGasTemperature);
+
+    pExhaustGasTemperature.index = 0x02;
+    pExhaustGasTemperature.data[0] = exhaustgastemperature[2];
+    pExhaustGasTemperature.data[1] = exhaustgastemperature[2]>>8;
+    pExhaustGasTemperature.data[2] = exhaustgastemperature[2]>>16;
+    pExhaustGasTemperature.data[3] = exhaustgastemperature[2]>>24;
+    cf.sendParam(pExhaustGasTemperature);
+
+    pExhaustGasTemperature.index = 0x03;
+    pExhaustGasTemperature.data[0] = exhaustgastemperature[3];
+    pExhaustGasTemperature.data[1] = exhaustgastemperature[3]>>8;
+    pExhaustGasTemperature.data[2] = exhaustgastemperature[3]>>16;
+    pExhaustGasTemperature.data[3] = exhaustgastemperature[3]>>24;
+    cf.sendParam(pExhaustGasTemperature);
+
+
+
+
+    if (rpm < 1) countup[6] = true;
+    if (rpm > 3010) countup[6] = false;
+
+    if (countup[6]) rpm += 32;
+    else rpm -= 32;
 
     CFParameter pRPM;
     pRPM.type = 0x200;
     pRPM.index = 0x00;
     pRPM.fcb = 0x00;
-    pRPM.data[0] = 0b11111111;
-    pRPM.data[1] = 0b00000100;
-    pRPM.data[2] = 0x00;
-    pRPM.data[3] = 0x00;
+    pRPM.data[0] = rpm;
+    pRPM.data[1] = rpm>>8;
+    pRPM.data[2] = rpm>>16;
+    pRPM.data[3] = rpm>>24;
     pRPM.length = 7;
     cf.sendParam(pRPM);
 
@@ -320,8 +429,8 @@ void loop() {
     pRPM.length = 5;
     cf.sendParam(pRPM);
 
-    float temperature = bmp.readTemperature();
-    unsigned int oiltemp = temperature * 10;
+    float oiltemperature = bmp.readTemperature();
+    unsigned int oiltemp = oiltemperature * 10;
     CFParameter pOilTemp;
     pOilTemp.type = 0x222;
     pOilTemp.index = 0x00;
@@ -330,6 +439,23 @@ void loop() {
     pOilTemp.data[1] = oiltemp>>8;
     pOilTemp.length = 5;
     cf.sendParam(pOilTemp);
+
+
+    if (oilpressure < 2000) countup[7] = true;
+    if (oilpressure > 7500) countup[7] = false;
+
+    if (countup[7]) oilpressure += 15;
+    else oilpressure -= 15;
+
+    
+    CFParameter pOilPressure;
+    pOilPressure.type = 0x220;
+    pOilPressure.index = 0x00;
+    pOilPressure.fcb = 0x00;
+    pOilPressure.data[0] = oilpressure;
+    pOilPressure.data[1] = oilpressure>>8;
+    pOilPressure.length = 5;
+    cf.sendParam(pOilPressure);
 
 
     // float currentinHg = 30.01;
@@ -369,6 +495,101 @@ void loop() {
     pIndicatedAltitude.length = 7;
     cf.sendParam(pIndicatedAltitude);
 
+
+    if (fuelquantity < 1) countup[8] = true;
+    if (fuelquantity > 2000) countup[8] = false;
+
+    if (countup[8]) fuelquantity += 15;
+    else fuelquantity -= 15;
+
+    CFParameter pFuelQuantity;
+    pFuelQuantity.type = 0x226; // Left Fuel Tank
+    pFuelQuantity.index = 0x00;
+    pFuelQuantity.fcb = 0x00;
+    pFuelQuantity.data[0] = fuelquantity;
+    pFuelQuantity.data[1] = fuelquantity>>8;
+    pFuelQuantity.data[2] = fuelquantity>>16;
+    pFuelQuantity.data[3] = fuelquantity>>24;
+    pFuelQuantity.length = 7;
+    cf.sendParam(pFuelQuantity);
+
+    pFuelQuantity.type = 0x227; // Right Fuel Tank
+    cf.sendParam(pFuelQuantity);
+
+
+
+    if (fuelflow < 400) countup[9] = true;
+    if (fuelflow > 1000) countup[9] = false;
+
+    if (countup[9]) fuelflow += 20;
+    else fuelflow -= 20;
+
+    CFParameter pFuelFlow;
+    pFuelFlow.type = 0x21A; // Left Fuel Tank
+    pFuelFlow.index = 0x00;
+    pFuelFlow.fcb = 0x00;
+    pFuelFlow.data[0] = fuelflow;
+    pFuelFlow.data[1] = fuelflow>>8;
+    pFuelFlow.data[2] = fuelflow>>16;
+    pFuelFlow.data[3] = fuelflow>>24;
+    pFuelFlow.length = 7;
+    cf.sendParam(pFuelFlow);
+
+    
+
+    if (fuelpressure < 4000) countup[10] = true;
+    if (fuelpressure > 5000) countup[10] = false;
+
+    if (countup[10]) fuelpressure += 20;
+    else fuelpressure -= 20;
+
+    CFParameter pFuelPressure;
+    pFuelPressure.type = 0x21C; // Left Fuel Tank
+    pFuelPressure.index = 0x00;
+    pFuelPressure.fcb = 0x00;
+    pFuelPressure.data[0] = fuelpressure;
+    pFuelPressure.data[1] = fuelpressure>>8;
+    pFuelPressure.data[2] = fuelpressure>>16;
+    pFuelPressure.data[3] = fuelpressure>>24;
+    pFuelPressure.length = 7;
+    cf.sendParam(pFuelPressure);
+
+
+    if (voltage < 10) countup[11] = true;
+    if (voltage > 150) countup[11] = false;
+
+    if (countup[11]) voltage += 2;
+    else voltage -= 2;
+
+    CFParameter pVoltage;
+    pVoltage.type = 0x50E; // Left Fuel Tank
+    pVoltage.index = 0x00;
+    pVoltage.fcb = 0x00;
+    pVoltage.data[0] = voltage;
+    pVoltage.data[1] = voltage>>8;
+    pVoltage.data[2] = voltage>>16;
+    pVoltage.data[3] = voltage>>24;
+    pVoltage.length = 7;
+    cf.sendParam(pVoltage);
+
+
+    if (amps < 150) countup[12] = true;
+    if (amps > 300) countup[12] = false;
+
+    if (countup[12]) amps += 2;
+    else amps -= 2;
+
+    CFParameter pAmps;
+    pAmps.type = 0x512; // Left Fuel Tank
+    pAmps.index = 0x00;
+    pAmps.fcb = 0x00;
+    pAmps.data[0] = amps;
+    pAmps.data[1] = amps>>8;
+    pAmps.data[2] = amps>>16;
+    pAmps.data[3] = amps>>24;
+    pAmps.length = 7;
+    cf.sendParam(pAmps);
+
     lasttime = now;
   }
   
@@ -382,6 +603,11 @@ void loop() {
 // translate from the common CanFixFrame structure and send it on the Bus.
 void can_write_callback(CanFixFrame frame) {
   CAN0.sendMsgBuf(frame.id, 0, frame.length, frame.data);
+}
+
+int ConvertCelsiusToFahrenheit(int degreesCelsius) {
+  int fahrenheit = (degreesCelsius * 9/5) + 32;
+  return fahrenheit;
 }
 
 

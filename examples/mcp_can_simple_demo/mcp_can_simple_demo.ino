@@ -79,7 +79,7 @@ void loop() {
   // check the "now" variable against another one called "lasttime" which
   // is set the "last time" this code block was run. If it's been more 
   // than 150ms, run this block again. If not, don't do anything.
-  if (now - lasttime > 150) {
+  if (now - lasttime > 200) {
 
     Serial.println("Doing something ...");
 
@@ -190,13 +190,14 @@ void loop() {
     // Now that our CFParameter named "pIndicatedAirspeed" is complete, we'll send it out to the CAN bus where the FiX Gateway will
     // injest it and the pyEfis screen will display it.
     
-    cf.sendParam(pIndicatedAirspeed);
+    // cf.sendParam(pIndicatedAirspeed);
 
     // Now we're just using the exact same data, but changing the type from IAS to True Airspeed (TAS) and resending it.
     // Note, IAS and TAS are likely not the same, depending on your altitude and air density. This is only a demonstration of
     // how to update a single property in CFParameter object and resend it.
-    pIndicatedAirspeed.type = 0x18D;
-    cf.sendParam(pIndicatedAirspeed);
+    
+    // pIndicatedAirspeed.type = 0x18D;
+    // cf.sendParam(pIndicatedAirspeed);
 
     // setting max and min values for the demo just like before. In real life you would likely read this value 
     // from an Air Data encoder or do some math using previous and current altitude values divided by the time between
@@ -441,7 +442,7 @@ void loop() {
     cf.sendParam(pOilTemp);
 
 
-    if (oilpressure < 2000) countup[7] = true;
+    if (oilpressure < 3000) countup[7] = true;
     if (oilpressure > 7500) countup[7] = false;
 
     if (countup[7]) oilpressure += 15;

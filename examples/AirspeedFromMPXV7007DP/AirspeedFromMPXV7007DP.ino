@@ -3,10 +3,22 @@
 #include <mcp_can_dfs.h>
 
 #include <Wire.h>
-#include <SPI.h>
+// #include <SPI.h>
 
+// Define several V speed parameters that will be pushed to the FIX Gateway. 
+// These values will eventually set the colored rings/lines on the ASI for
+// each of the following speeds. Note: These meta headers are passed in 
+// Least Significant Bit format (0001 will be sent as 1000)
+#define META_MIN  0b00010000
+#define META_MAX  0b00100000
+#define VNE       0b01010000
+#define VFE       0b01100000
+#define VS1       0b10100000
+#define VS0       0b10110000
+#define VNO       0b10010000
+
+// set the interrupt pin to 2
 #define CAN0_INT 2
-
 
 MCP_CAN CAN0(10); // MCP2515 module (8Mhz)
 // MCP_CAN CAN0(17); // All-in-one (16Mhz)
@@ -23,20 +35,6 @@ int smoothReadings[12];
 unsigned long smoothCount = 0;
 
 
-
-// Define several V speed parameters that will be pushed to the FIX Gateway. 
-// These values will eventually set the colored rings/lines on the ASI for
-// each of the following speeds. Note: These meta headers are passed in 
-// Least Significant Bit format (0001 will be sent as 1000)
-#define META_MIN  0b00010000
-#define META_MAX  0b00100000
-#define VNE       0b01010000
-#define VFE       0b01100000
-#define VS1       0b10100000
-#define VS0       0b10110000
-#define VNO       0b10010000
-
-
 // Instantiate the various V speeds that will appear on the Airspeed Indicator (ASI)
 // these values, according to the CAN-FiX spec, are in 1/10 of a knot. So 1000 here
 // denotes 100.0 knots on the ASI.
@@ -51,8 +49,11 @@ int asiVnoValue = 1250; // max maneuvering speed
 
 // the setup routine runs once when you press reset:
 void setup() {
+
   // initialize serial communication at 115200 bits per second:
   Serial.begin(115200);
+
+  // set up CAN-FiX device data
   cf.setDeviceId(0x82);
   cf.setModel(0x12345);
   cf.setFwVersion(2);

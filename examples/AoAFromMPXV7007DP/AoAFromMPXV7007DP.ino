@@ -27,13 +27,21 @@ CanFix cf(0x78);
 
 // AMS_5600 ams5600;
 
-float lastAnglePitch = 0.0;
+// float zeroGValue;
+// float warnValue;
+// float stallValue;
+
+long zeroGValue;
+long warnValue;
+long stallValue;
+
+// float lastAnglePitch = 0.0;
 unsigned long now;
 unsigned long lastPerameterSet;
 unsigned long lastTime;
 unsigned long messageSendInterval = 100;
 
-float smoothReadings;
+long smoothReadings;
 int smoothCount;
 
 void setup() {
@@ -64,6 +72,17 @@ void setup() {
   Serial.println("Setup complete");
   smoothReadings = 0.0;
   smoothCount = 0;
+  EEPROM.get(EEPROM_ZERO_G_POSITION, zeroGValue);
+  EEPROM.get(EEPROM_WARN_POSITION, warnValue);
+  EEPROM.get(EEPROM_STALL_POSITION, stallValue);
+
+
+  // for (int i = 0; i < EEPROM.length(); i++) {
+  //   EEPROM.write(i, 0);
+  // }
+
+  // Serial.println("EEPROM Cleared!");
+
 }
 
 void loop() {
@@ -76,13 +95,11 @@ void loop() {
   now = millis();
 
   // First, get the reading from the pressure differential sensor.
-  long rawAnglePitch = analogRead(A0);
-  // Serial.print("rawAnglePitch: ");
-  // Serial.print(rawAnglePitch);
+  long rawAnglePitch = (float)analogRead(A0) * 100.0; // / 10.0;
+  //Serial.println(rawAnglePitch);
 
-  //float pitchAngle = (float)rawAnglePitch * 100; // / 100;
-  // Serial.print("pitchAngle: ");
-  // Serial.println(pitchAngle);
+  EEPROM.get(EEPROM_ZERO_G_POSITION, zeroGValue);
+  // Serial.println(zeroGValue);
 
   // Next, check to see if there's a message waiting in the CAN buffer. We 
   // specifically want to find one with the 0x30F identifier, which we will
@@ -90,16 +107,22 @@ void loop() {
   // If this message is received, this code block will decipher it and use the current
   // pitchAngle value to set the values permanently in the EEPROM
   if (!digitalRead(CAN0_INT)) {
-        
+    
     // read the message and assign parts to the variables above
     CAN0.readMsgBuf(&rxId, &len, rxBuf);
     if ((rxId & 0x80000000) != 0x80000000) {
+      //Serial.println("Packet Recieved ... ");
       
       // Check to see if the message id is 0x30F, which is undefined in the
       // CANFIX spec - e.g., we can use it for other things like, say, 
       // telling our AoA sensor to set some data fields and write the
       // values to EEPROM so the settings persist after reboot
+      
+      // Serial.println(rxId);
+
       if (rxId == 0x4000030F) {
+
+        Serial.println("Packet Recieved ... ");
 
         // Create a CanFixFrame object that we can parse from the variables above
         CanFixFrame frame;
@@ -116,30 +139,23 @@ void loop() {
         Serial.print("Button pressed: ");
         Serial.print(buttonId);
 
+
+
         if (buttonId == 0x00) {  
-
-          // writeEEPROM(EEPROM_ZERO_G_POSITION , pitchAngle);
-          // setParameter(META_ZERO_G, pitchAngle);
-
+          
           writeEEPROM(EEPROM_ZERO_G_POSITION , rawAnglePitch);
           setParameter(META_ZERO_G, rawAnglePitch);
           Serial.println("0g Meta message sent ...");
 
         } else if (buttonId == 0x01) {
 
-          // writeEEPROM(EEPROM_WARN_POSITION, pitchAngle);
-          // setParameter(META_WARN, pitchAngle);
-          
-          writeEEPROM(EEPROM_WARN_POSITION, rawAnglePitch);
+          writeEEPROM(EEPROM_WARN_POSITION, rawAnglePitch - zeroGValue);
           setParameter(META_WARN, rawAnglePitch);
           Serial.println("Warn Meta message sent ...");
           
         } else if (buttonId == 0x02) {
-
-          // writeEEPROM(EEPROM_STALL_POSITION, pitchAngle);
-          // setParameter(META_STALL, pitchAngle);
           
-          writeEEPROM(EEPROM_STALL_POSITION, rawAnglePitch);
+          writeEEPROM(EEPROM_STALL_POSITION, rawAnglePitch - zeroGValue);
           setParameter(META_STALL, rawAnglePitch);
           Serial.println("Stall Meta message sent ...");
 
@@ -156,22 +172,33 @@ void loop() {
     
   }
   
+  
+
   // Read the 0g, Warn, and Stall parameters from the EEPROM (possibly just written a moment ago)
-  long zeroGValue = 517;
+  // long zeroGValue = 517;
   // float zeroGValue;
-  // EEPROM.get(EEPROM_ZERO_G_POSITION, zeroGValue);
+  // long zeroGValue = EEPROM.get(EEPROM_ZERO_G_POSITION, zeroGValue);
 
-  long warnValue = 30;
+  // long warnValue = 30;
   // float warnValue;
-  // EEPROM.get(EEPROM_WARN_POSITION, warnValue);
+  // long warnValue = EEPROM.get(EEPROM_WARN_POSITION, warnValue);
 
-  long stallValue = 42;
+  // long stallValue = 42;
   // float stallValue;
-  // EEPROM.get(EEPROM_STALL_POSITION, stallValue);
+  // long stallValue = EEPROM.get(EEPROM_STALL_POSITION, stallValue);
 
   // use the data to send the CAN-FiX parameters out to the FiX Gateway every second
   if (now - lastPerameterSet > 1000) {
     Serial.println("Setting parameters ...");
+    
+    EEPROM.get(EEPROM_ZERO_G_POSITION, zeroGValue);
+    EEPROM.get(EEPROM_WARN_POSITION, warnValue);
+    EEPROM.get(EEPROM_STALL_POSITION, stallValue);
+
+    
+
+    Serial.print("zeroGValue from EEPROM: ");
+    Serial.println(zeroGValue);
 
     // Send those values out to the CAN
     setParameter(META_ZERO_G, zeroGValue);
@@ -183,47 +210,36 @@ void loop() {
   }
 
   // Check to see if the zeroGValue was read correctly (e.g. is it set?)
-  // If so, subtract that value from the pitchAngle. Otherwise, just use
-  // pitchAngle for calculations.
+  // If so, subtract that value from the pitchAngle. Otherwise, leave it alone.
   if (zeroGValue != NAN) {
-    // pitchAngle -= zeroGValue;
     rawAnglePitch -= zeroGValue;
   }
 
   
   if(now - lastTime < messageSendInterval) {
 
-    // smoothReadings += pitchAngle;
     smoothReadings += rawAnglePitch;
     smoothCount++;
 
-    // Serial.print("pitchAngle: ");
-    // Serial.print(pitchAngle);
-    // Serial.print("rawAnglePitch: ");
-    // Serial.print(rawAnglePitch);
-    
-    // Serial.print("\tsmoothReadings: ");
-    // Serial.println(smoothReadings);
-
   } else {
 
-    // pitchAngle = smoothReadings / smoothCount;
-    rawAnglePitch = smoothReadings / smoothCount;
+    long pitchAngle = smoothReadings / smoothCount;
+    //rawAnglePitch = smoothReadings / smoothCount;
 
-    Serial.print("rawAnglePitch: ");
-    Serial.println(rawAnglePitch);
-    sendAoAPitchAngle(rawAnglePitch);
-    //sendAoAPitchAngle(pitchAngle);
+    // Serial.print("rawAnglePitch: ");
+    // Serial.println(rawAnglePitch);
+    Serial.print("pitchAngle: ");
+    Serial.println(pitchAngle);
+    //sendAoAPitchAngle(rawAnglePitch);
+    sendAoAPitchAngle(pitchAngle);
 
     // lastAnglePitch = pitchAngle;
-    lastAnglePitch = rawAnglePitch;
+    // lastAnglePitch = rawAnglePitch;
     lastTime = now;
-    smoothReadings = 0.0;
+    smoothReadings = 0;
     smoothCount = 0;
 
   }
-
-
 
 }
 
@@ -245,7 +261,7 @@ void can_write_callback(CanFixFrame frame) {
 *********************************************************************/
 void sendAoAPitchAngle(long angle) {
 
-    signed int x = angle * 100;
+    signed long x = angle; //* 100;
 
     CFParameter pAngleOfAttack;
     pAngleOfAttack.type = 0x182; // CAN-FIX Angle of Attack Parameter
@@ -258,10 +274,10 @@ void sendAoAPitchAngle(long angle) {
     pAngleOfAttack.length = 7;
     cf.sendParam(pAngleOfAttack);
 
-    Serial.print("angle: ");
-    Serial.print(angle);
-    Serial.print("\t\tx: ");
-    Serial.println(x);
+    // Serial.print("angle: ");
+    // Serial.print(angle);
+    // Serial.print("\t\tx: ");
+    // Serial.println(x);
 
 }
 
@@ -270,10 +286,10 @@ void sendAoAPitchAngle(long angle) {
   for that meta type. Then it pushes the update over the CAN bus for 
   use on the EFIS screen
 *********************************************************************/
-void setParameter(byte metaType, float angle) {
+void setParameter(byte metaType, long angle) {
 
   CFParameter pAoAMeta;
-  signed int x = angle * 100;
+  signed long x = angle;
 
   pAoAMeta.type = 0x182; // CAN-FIX Angle of Attack Parameter
   pAoAMeta.index = 0x00;
@@ -307,9 +323,9 @@ void setParameter(byte metaType, float angle) {
 //   }
 // }
 
-void writeEEPROM(int eepromPosition, float angle) {
+void writeEEPROM(int eepromPosition, long angle) {
 
-  float currentAngle;
+  long currentAngle;
   EEPROM.get(eepromPosition, currentAngle);
 
   Serial.print("\ncurrentAngle: ");
@@ -328,4 +344,6 @@ void writeEEPROM(int eepromPosition, float angle) {
   }
 
 }
+
+
 

@@ -30,6 +30,9 @@ unsigned int fuelpressure = 4000;
 unsigned int oilpressure = 3000;
 unsigned int voltage = 0;
 unsigned int amps = 0;
+signed int roll = 0;
+signed int heading = 0;
+signed int pitch = 0;
 bool countup[15];
 volatile unsigned int counter = 0;
 volatile float currentinHg = 30.01;
@@ -526,7 +529,7 @@ void loop() {
     else fuelflow -= 20;
 
     CFParameter pFuelFlow;
-    pFuelFlow.type = 0x21A; // Left Fuel Tank
+    pFuelFlow.type = 0x21A; // Fuel Flow
     pFuelFlow.index = 0x00;
     pFuelFlow.fcb = 0x00;
     pFuelFlow.data[0] = fuelflow;
@@ -545,7 +548,7 @@ void loop() {
     else fuelpressure -= 20;
 
     CFParameter pFuelPressure;
-    pFuelPressure.type = 0x21C; // Left Fuel Tank
+    pFuelPressure.type = 0x21C; // Fuel Pressure
     pFuelPressure.index = 0x00;
     pFuelPressure.fcb = 0x00;
     pFuelPressure.data[0] = fuelpressure;
@@ -563,7 +566,7 @@ void loop() {
     else voltage -= 2;
 
     CFParameter pVoltage;
-    pVoltage.type = 0x50E; // Left Fuel Tank
+    pVoltage.type = 0x50E; // Voltage
     pVoltage.index = 0x00;
     pVoltage.fcb = 0x00;
     pVoltage.data[0] = voltage;
@@ -581,7 +584,7 @@ void loop() {
     else amps -= 2;
 
     CFParameter pAmps;
-    pAmps.type = 0x512; // Left Fuel Tank
+    pAmps.type = 0x512; // Amps
     pAmps.index = 0x00;
     pAmps.fcb = 0x00;
     pAmps.data[0] = amps;
@@ -590,6 +593,69 @@ void loop() {
     pAmps.data[3] = amps>>24;
     pAmps.length = 7;
     cf.sendParam(pAmps);
+
+
+    if (roll < -3000) countup[13] = true;
+    if (roll > 3000) countup[13] = false;
+
+    if (countup[13]) roll += 250;
+    else roll -= 300;
+
+    CFParameter pRoll;
+    pRoll.type = 0x181; // Roll
+    pRoll.index = 0x00;
+    pRoll.fcb = 0x00;
+    pRoll.data[0] = roll;
+    pRoll.data[1] = roll>>8;
+    pRoll.data[2] = roll>>16;
+    pRoll.data[3] = roll>>24;
+    pRoll.length = 7;
+    cf.sendParam(pRoll);
+
+    
+    //if (heading <= 0) heading += 360;
+
+    signed int magneticHeading = heading - 1800;
+    
+    if (magneticHeading < -900) countup[14] = true;
+    if (magneticHeading > 900) countup[14] = false;
+
+    if (countup[14]) heading += 15;
+    else heading -= 15;
+
+    CFParameter pHeading;
+    pHeading.type = 0x185; // Magnetic Heading
+    pHeading.index = 0x00;
+    pHeading.fcb = 0x00;
+    pHeading.data[0] = heading;
+    pHeading.data[1] = heading>>8;
+    pHeading.data[2] = heading>>16;
+    pHeading.data[3] = heading>>24;
+    pHeading.length = 7;
+    cf.sendParam(pHeading);
+
+    Serial.print ("heading: ");
+    Serial.print (heading);
+    Serial.print ("\tmagneticHeading: ");
+    Serial.print (magneticHeading);
+
+    
+    if (pitch < -9100) countup[15] = true;
+    if (pitch > 9200) countup[15] = false;
+
+    if (countup[15]) pitch += 100;
+    else pitch -= 100;
+
+    CFParameter pPitch;
+    pPitch.type = 0x180; // Pitch
+    pPitch.index = 0x00;
+    pPitch.fcb = 0x00;
+    pPitch.data[0] = pitch;
+    pPitch.data[1] = pitch>>8;
+    pPitch.data[2] = pitch>>16;
+    pPitch.data[3] = pitch>>24;
+    pPitch.length = 7;
+    cf.sendParam(pPitch);
 
     lasttime = now;
   }

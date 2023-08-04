@@ -31,11 +31,17 @@ Then
 #define META_ZERO_G   0b01110000
 #define META_WARN     0b10000000
 #define META_STALL    0b10010000
-#define CAN0_INT      2
+// #define CAN0_INT      2
+#define CAN0_INT      7
 
-#define ZERO_G_PIN  6
-#define WARN_PIN    7
-#define STALL_PIN   8
+// #define ZERO_G_PIN  6
+// #define WARN_PIN    7
+// #define STALL_PIN   8
+
+#define ZERO_G_PIN  2
+// #define WARN_PIN    7
+#define STALL_PIN   3
+
 
 MCP_CAN CAN0(10);
 CanFix cf(0x7A);
@@ -56,7 +62,7 @@ void setup() {
 
   // pinMode(LED_BUILTIN, OUTPUT);
   pinMode(ZERO_G_PIN, INPUT);
-  pinMode(WARN_PIN, INPUT);
+  // pinMode(WARN_PIN, INPUT);
   pinMode(STALL_PIN, INPUT);
 
   delay(250);
@@ -83,11 +89,11 @@ void loop() {
       SetAngle(data);
     }
 
-    if (digitalRead(WARN_PIN) == HIGH) {
-      int data = 0x01;
-      // SetAngle(META_WARN, data);
-      SetAngle(data);
-    }
+    // if (digitalRead(WARN_PIN) == HIGH) {
+    //   int data = 0x01;
+    //   // SetAngle(META_WARN, data);
+    //   SetAngle(data);
+    // }
 
     if (digitalRead(STALL_PIN) == HIGH) {
       int data = 0x02;

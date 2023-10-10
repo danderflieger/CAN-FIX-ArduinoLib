@@ -54,6 +54,9 @@ void setup() {
     Serial.println("Unable to begin CAN0");
     delay(1000);
   }
+
+  CAN0.setMode(MCP_NORMAL);
+  pinMode(CAN0_INT, INPUT);
   
 
   while (!bno.begin()) {
@@ -252,7 +255,7 @@ void sendHeading(float heading) {
     unsigned int x = heading * 10;
 
     CFParameter pHeading;
-    pHeading.type = HEADING; //0x182; // CAN-FIX Angle of Attack Parameter
+    pHeading.type = HEADING; //0x185; // CAN-FIX Heading Parameter
     pHeading.index = 0x00;
     pHeading.fcb = 0x00;
     pHeading.data[0] = x;
@@ -261,18 +264,19 @@ void sendHeading(float heading) {
     pHeading.data[3] = x>>24;
     pHeading.length = 7;
     cf.sendParam(pHeading);
+    delay(5);
 
     Serial.print("Heading Sent: ");
-    Serial.println(heading);
+    Serial.println(x);
 
 }
 
 void sendPitch(float pitch) {
 
-    unsigned int x = pitch * 100;
+    signed long x = pitch * 100;
 
     CFParameter pPitch;
-    pPitch.type = PITCH; //0x182; // CAN-FIX Angle of Attack Parameter
+    pPitch.type = PITCH; //0x180; // CAN-FIX Pitch Parameter
     pPitch.index = 0x00;
     pPitch.fcb = 0x00;
     pPitch.data[0] = x;
@@ -281,18 +285,19 @@ void sendPitch(float pitch) {
     pPitch.data[3] = x>>24;
     pPitch.length = 7;
     cf.sendParam(pPitch);
+    delay(5);
 
     Serial.print("Pitch Sent: ");
-    Serial.println(pitch);
+    Serial.println(x);
 
 }
 
 void sendRoll(float roll) {
 
-    unsigned int x = roll * 100;
+    signed long x = roll * 100;
 
     CFParameter pRoll;
-    pRoll.type = ROLL; //0x182; // CAN-FIX Angle of Attack Parameter
+    pRoll.type = ROLL; //0x181; // CAN-FIX Roll Parameter
     pRoll.index = 0x00;
     pRoll.fcb = 0x00;
     pRoll.data[0] = x;
@@ -301,9 +306,10 @@ void sendRoll(float roll) {
     pRoll.data[3] = x>>24;
     pRoll.length = 7;
     cf.sendParam(pRoll);
+    delay(5);
 
     Serial.print("Roll Sent: ");
-    Serial.println(roll);
+    Serial.println(x);
 
 }
 

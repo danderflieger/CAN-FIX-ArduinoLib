@@ -17,6 +17,7 @@ CanFix cf(0x82);
 
 unsigned long now;
 unsigned long lasttime;
+unsigned long messagedelay = 50;
 unsigned int airspeed = 1300;
 signed int verticalspeed;
 signed int turnrate;
@@ -30,10 +31,12 @@ unsigned int fuelpressure = 4000;
 unsigned int oilpressure = 3000;
 unsigned int voltage = 0;
 unsigned int amps = 0;
-signed int roll = 0;
-signed int heading = 0;
-signed int pitch = 0;
+signed long roll = 0;
+signed long heading = 0;
+signed long pitch = 0;
 bool countup[15];
+bool pitchCountUp;
+
 volatile unsigned int counter = 0;
 volatile float currentinHg = 30.01;
 
@@ -56,14 +59,8 @@ void setup() {
   // else
   //   Serial.println("Error Initializing MCP2515...");
 
-  // CAN0.setMode(MCP_NORMAL);
+  CAN0.setMode(MCP_NORMAL);
 
-  // pinMode(CAN0_INT, INPUT);
-  // pinMode(3, INPUT_PULLUP);
-  // pinMode(4, INPUT_PULLUP);
-
-  // attachInterrupt(0, ai0, RISING);
-  //attachInterrupt(1, ai1, RISING);
 
   // Serial.println("MCP2515 Initialized Successfully!");
   now = millis();
@@ -82,7 +79,7 @@ void loop() {
   // check the "now" variable against another one called "lasttime" which
   // is set the "last time" this code block was run. If it's been more 
   // than 150ms, run this block again. If not, don't do anything.
-  if (now - lasttime > 200) {
+  if (now - lasttime > messagedelay) {
 
     Serial.println("Doing something ...");
 
@@ -193,7 +190,9 @@ void loop() {
     // Now that our CFParameter named "pIndicatedAirspeed" is complete, we'll send it out to the CAN bus where the FiX Gateway will
     // injest it and the pyEfis screen will display it.
     
-    // cf.sendParam(pIndicatedAirspeed);
+    cf.sendParam(pIndicatedAirspeed);
+    delay(100);
+    Serial.println(airspeed);
 
     // Now we're just using the exact same data, but changing the type from IAS to True Airspeed (TAS) and resending it.
     // Note, IAS and TAS are likely not the same, depending on your altitude and air density. This is only a demonstration of
@@ -253,7 +252,7 @@ void loop() {
 
     // Send the message to the CAN bus
     
-    cf.sendParam(pVerticalSpeed);
+    // cf.sendParam(pVerticalSpeed);
 
     
     if (turnrate <= -10) {
@@ -276,7 +275,7 @@ void loop() {
     pTurnRate.data[2] = turnrate>>16;
     pTurnRate.data[3] = turnrate>>24;
     pTurnRate.length = 7;
-    cf.sendParam(pTurnRate);
+    // cf.sendParam(pTurnRate);
 
 
     if (lateralacceleration < -250.0) countup[3] = true;
@@ -293,7 +292,7 @@ void loop() {
     pLateralAcceleration.data[2] = lateralacceleration>>16;
     pLateralAcceleration.data[3] = lateralacceleration>>24;
     pLateralAcceleration.length = 7;
-    cf.sendParam(pLateralAcceleration);
+    // cf.sendParam(pLateralAcceleration);
 
 
 
@@ -326,28 +325,28 @@ void loop() {
     pCylinderHeadTemperature.data[2] = cylinderheadtemperature[0]>>16;
     pCylinderHeadTemperature.data[3] = cylinderheadtemperature[0]>>24;
     pCylinderHeadTemperature.length = 7;
-    cf.sendParam(pCylinderHeadTemperature);
+    // cf.sendParam(pCylinderHeadTemperature);
 
     pCylinderHeadTemperature.index = 0x01;
     pCylinderHeadTemperature.data[0] = cylinderheadtemperature[1];
     pCylinderHeadTemperature.data[1] = cylinderheadtemperature[1]>>8;
     pCylinderHeadTemperature.data[2] = cylinderheadtemperature[1]>>16;
     pCylinderHeadTemperature.data[3] = cylinderheadtemperature[1]>>24;
-    cf.sendParam(pCylinderHeadTemperature);
+    // cf.sendParam(pCylinderHeadTemperature);
 
     pCylinderHeadTemperature.index = 0x02;
     pCylinderHeadTemperature.data[0] = cylinderheadtemperature[2];
     pCylinderHeadTemperature.data[1] = cylinderheadtemperature[2]>>8;
     pCylinderHeadTemperature.data[2] = cylinderheadtemperature[2]>>16;
     pCylinderHeadTemperature.data[3] = cylinderheadtemperature[2]>>24;
-    cf.sendParam(pCylinderHeadTemperature);
+    // cf.sendParam(pCylinderHeadTemperature);
 
     pCylinderHeadTemperature.index = 0x03;
     pCylinderHeadTemperature.data[0] = cylinderheadtemperature[3];
     pCylinderHeadTemperature.data[1] = cylinderheadtemperature[3]>>8;
     pCylinderHeadTemperature.data[2] = cylinderheadtemperature[3]>>16;
     pCylinderHeadTemperature.data[3] = cylinderheadtemperature[3]>>24;
-    cf.sendParam(pCylinderHeadTemperature);
+    // cf.sendParam(pCylinderHeadTemperature);
 
 
 
@@ -381,28 +380,28 @@ void loop() {
     pExhaustGasTemperature.data[2] = exhaustgastemperature[0]>>16;
     pExhaustGasTemperature.data[3] = exhaustgastemperature[0]>>24;
     pExhaustGasTemperature.length = 7;
-    cf.sendParam(pExhaustGasTemperature);
+    // cf.sendParam(pExhaustGasTemperature);
 
     pExhaustGasTemperature.index = 0x01;
     pExhaustGasTemperature.data[0] = exhaustgastemperature[1];
     pExhaustGasTemperature.data[1] = exhaustgastemperature[1]>>8;
     pExhaustGasTemperature.data[2] = exhaustgastemperature[1]>>16;
     pExhaustGasTemperature.data[3] = exhaustgastemperature[1]>>24;
-    cf.sendParam(pExhaustGasTemperature);
+    // cf.sendParam(pExhaustGasTemperature);
 
     pExhaustGasTemperature.index = 0x02;
     pExhaustGasTemperature.data[0] = exhaustgastemperature[2];
     pExhaustGasTemperature.data[1] = exhaustgastemperature[2]>>8;
     pExhaustGasTemperature.data[2] = exhaustgastemperature[2]>>16;
     pExhaustGasTemperature.data[3] = exhaustgastemperature[2]>>24;
-    cf.sendParam(pExhaustGasTemperature);
+    // cf.sendParam(pExhaustGasTemperature);
 
     pExhaustGasTemperature.index = 0x03;
     pExhaustGasTemperature.data[0] = exhaustgastemperature[3];
     pExhaustGasTemperature.data[1] = exhaustgastemperature[3]>>8;
     pExhaustGasTemperature.data[2] = exhaustgastemperature[3]>>16;
     pExhaustGasTemperature.data[3] = exhaustgastemperature[3]>>24;
-    cf.sendParam(pExhaustGasTemperature);
+    // cf.sendParam(pExhaustGasTemperature);
 
 
 
@@ -422,7 +421,7 @@ void loop() {
     pRPM.data[2] = rpm>>16;
     pRPM.data[3] = rpm>>24;
     pRPM.length = 7;
-    cf.sendParam(pRPM);
+    // cf.sendParam(pRPM);
 
     CFParameter pMAP;
     pRPM.type = 0x21E;
@@ -431,7 +430,7 @@ void loop() {
     pRPM.data[0] = 2987;
     pRPM.data[1] = 2987>>8;
     pRPM.length = 5;
-    cf.sendParam(pRPM);
+    // cf.sendParam(pRPM);
 
     float oiltemperature = bmp.readTemperature();
     unsigned int oiltemp = oiltemperature * 10;
@@ -442,7 +441,7 @@ void loop() {
     pOilTemp.data[0] = oiltemp;
     pOilTemp.data[1] = oiltemp>>8;
     pOilTemp.length = 5;
-    cf.sendParam(pOilTemp);
+    // cf.sendParam(pOilTemp);
 
 
     if (oilpressure < 3000) countup[7] = true;
@@ -459,7 +458,7 @@ void loop() {
     pOilPressure.data[0] = oilpressure;
     pOilPressure.data[1] = oilpressure>>8;
     pOilPressure.length = 5;
-    cf.sendParam(pOilPressure);
+    // cf.sendParam(pOilPressure);
 
 
     // float currentinHg = 30.01;
@@ -474,7 +473,7 @@ void loop() {
     pAltimeterSetting.data[0] = altimeterSetting;
     pAltimeterSetting.data[1] = altimeterSetting>>8;
     pAltimeterSetting.length = 5;
-    cf.sendParam(pAltimeterSetting);
+    // cf.sendParam(pAltimeterSetting);
 
     float meters = bmp.readAltitude(currentMillibars);
 
@@ -515,10 +514,10 @@ void loop() {
     pFuelQuantity.data[2] = fuelquantity>>16;
     pFuelQuantity.data[3] = fuelquantity>>24;
     pFuelQuantity.length = 7;
-    cf.sendParam(pFuelQuantity);
+    // cf.sendParam(pFuelQuantity);
 
     pFuelQuantity.type = 0x227; // Right Fuel Tank
-    cf.sendParam(pFuelQuantity);
+    // cf.sendParam(pFuelQuantity);
 
 
 
@@ -537,7 +536,7 @@ void loop() {
     pFuelFlow.data[2] = fuelflow>>16;
     pFuelFlow.data[3] = fuelflow>>24;
     pFuelFlow.length = 7;
-    cf.sendParam(pFuelFlow);
+    // cf.sendParam(pFuelFlow);
 
     
 
@@ -556,7 +555,7 @@ void loop() {
     pFuelPressure.data[2] = fuelpressure>>16;
     pFuelPressure.data[3] = fuelpressure>>24;
     pFuelPressure.length = 7;
-    cf.sendParam(pFuelPressure);
+    // cf.sendParam(pFuelPressure);
 
 
     if (voltage < 10) countup[11] = true;
@@ -574,7 +573,7 @@ void loop() {
     pVoltage.data[2] = voltage>>16;
     pVoltage.data[3] = voltage>>24;
     pVoltage.length = 7;
-    cf.sendParam(pVoltage);
+    // cf.sendParam(pVoltage);
 
 
     if (amps < 150) countup[12] = true;
@@ -592,25 +591,10 @@ void loop() {
     pAmps.data[2] = amps>>16;
     pAmps.data[3] = amps>>24;
     pAmps.length = 7;
-    cf.sendParam(pAmps);
+    // cf.sendParam(pAmps);
 
 
-    if (roll < -3000) countup[13] = true;
-    if (roll > 3000) countup[13] = false;
 
-    if (countup[13]) roll += 250;
-    else roll -= 300;
-
-    CFParameter pRoll;
-    pRoll.type = 0x181; // Roll
-    pRoll.index = 0x00;
-    pRoll.fcb = 0x00;
-    pRoll.data[0] = roll;
-    pRoll.data[1] = roll>>8;
-    pRoll.data[2] = roll>>16;
-    pRoll.data[3] = roll>>24;
-    pRoll.length = 7;
-    cf.sendParam(pRoll);
 
     
     //if (heading <= 0) heading += 360;
@@ -620,8 +604,8 @@ void loop() {
     if (magneticHeading < -900) countup[14] = true;
     if (magneticHeading > 900) countup[14] = false;
 
-    if (countup[14]) heading += 15;
-    else heading -= 15;
+    if (countup[14]) heading += 55;
+    else heading -= 55;
 
     CFParameter pHeading;
     pHeading.type = 0x185; // Magnetic Heading
@@ -632,19 +616,42 @@ void loop() {
     pHeading.data[2] = heading>>16;
     pHeading.data[3] = heading>>24;
     pHeading.length = 7;
-    cf.sendParam(pHeading);
+    // cf.sendParam(pHeading);
+    delay(5);
 
-    Serial.print ("heading: ");
-    Serial.print (heading);
-    Serial.print ("\tmagneticHeading: ");
-    Serial.print (magneticHeading);
+    // Serial.print ("heading: ");
+    // Serial.print (heading);
+    // Serial.print ("\tmagneticHeading: ");
+    // Serial.print (magneticHeading);
 
+
+    if (pitch > 5000) { 
+      //pitch = 0; 
+      pitchCountUp = false;
+    } 
+
+    if (pitch <= -5000) {
+      // pitch = 0;
+      pitchCountUp = true;
+    }
+
+    if (pitchCountUp == true) {
+      pitch = pitch + 50;
+      // Serial.print("pitchCountUp: ");
+      // Serial.println(pitchCountUp);
+      // Serial.print("pitch: ");
+      // Serial.println(pitch);
+    } else {
+      pitch = pitch - 50;
+      // Serial.print("pitchCountUp: ");
+      // Serial.println(pitchCountUp);
+      // Serial.print("pitch: ");
+      // Serial.println(pitch);
+    }
+
+    // Serial.println();
     
-    if (pitch < -9100) countup[15] = true;
-    if (pitch > 9200) countup[15] = false;
 
-    if (countup[15]) pitch += 100;
-    else pitch -= 100;
 
     CFParameter pPitch;
     pPitch.type = 0x180; // Pitch
@@ -655,7 +662,34 @@ void loop() {
     pPitch.data[2] = pitch>>16;
     pPitch.data[3] = pitch>>24;
     pPitch.length = 7;
-    cf.sendParam(pPitch);
+    // cf.sendParam(pPitch);
+
+    // Serial.print("pitch: ");
+    // Serial.println(pitch);
+    delay(5);
+
+
+    if (roll < -3000) countup[13] = true;
+    if (roll > 3000) countup[13] = false;
+
+    if (countup[13] == true) { roll = roll + 200; }
+    else { roll = roll - 200; }
+
+    CFParameter pRoll;
+    pRoll.type = 0x181; // Roll
+    pRoll.index = 0x00;
+    pRoll.fcb = 0x00;
+    pRoll.data[0] = roll;
+    pRoll.data[1] = roll>>8;
+    pRoll.data[2] = roll>>16;
+    pRoll.data[3] = roll>>24;
+    pRoll.length = 7;
+    // cf.sendParam(pRoll);
+    delay(5);
+
+    // Serial.print("roll: ");
+    // Serial.println(roll);
+    // Serial.println();
 
     lasttime = now;
   }

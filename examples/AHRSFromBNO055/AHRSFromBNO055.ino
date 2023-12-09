@@ -10,13 +10,6 @@
 #include <utility/imumaths.h>
 
 #include <SPI.h>
-// #include <AS5600.h>
-
-// // define where in EEPROM the saved values are located (NOT the angles, just where they are 
-// // located in the EEPROM chip - each reading is a Float value, which is 4 bytes long)
-// #define EEPROM_ZERO_G_POSITION  0x00
-// #define EEPROM_WARN_POSITION    0x05
-// #define EEPROM_STALL_POSITION   0x10
 
 #define BNO055_SAMPLE_INTERVAL 100
 
@@ -64,10 +57,6 @@ void setup() {
     delay(1000);
   }
 
-
-
-
-  
   int eeAddress = 0;
   long bnoID;
   bool foundCalib = false;
@@ -201,14 +190,6 @@ void loop() {
 
   sensors_event_t event;
   bno.getEvent(&event);
-
-  // long unsigned int rxId;
-  // unsigned char len = 0;
-  // char msgString[128];
-  // unsigned char rxBuf[8];
-  
-
-
 
   unsigned long now = millis();
   
@@ -353,12 +334,10 @@ void displaySensorStatus(void) {
   delay(500);
 }
 
-/**************************************************************************/
-/*
-    Displays some basic information on this sensor from the unified
-    sensor API sensor_t type (see Adafruit_Sensor for more information)
-*/
-/**************************************************************************/
+/**************************************************************************
+  Displays some basic information on this sensor from the unified
+  sensor API sensor_t type (see Adafruit_Sensor for more information)
+**************************************************************************/
 void displaySensorDetails(void)
 {
   sensor_t sensor;
@@ -379,11 +358,9 @@ void displaySensorDetails(void)
   delay(500);
 }
 
-/**************************************************************************/
-/*
+/**************************************************************************
     Display sensor calibration status
-    */
-/**************************************************************************/
+**************************************************************************/
 void displayCalStatus(void)
 {
   /* Get the four calibration values (0..3) */
@@ -412,11 +389,9 @@ void displayCalStatus(void)
 }
 
 
-/**************************************************************************/
-/*
-    Display the raw calibration offset and radius data
-    */
-/**************************************************************************/
+/**************************************************************************
+  Display the raw calibration offset and radius data
+**************************************************************************/
 void displaySensorOffsets(const adafruit_bno055_offsets_t &calibData)
 {
   Serial.print("Accelerometer: ");

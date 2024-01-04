@@ -17,7 +17,7 @@ CanFix cf(0x82);
 
 unsigned long now;
 unsigned long lasttime;
-unsigned long messagedelay = 50;
+unsigned long messagedelay = 100;
 unsigned int airspeed = 1300;
 signed int verticalspeed;
 signed int turnrate;
@@ -37,8 +37,33 @@ signed long pitch = 0;
 bool countup[15];
 bool pitchCountUp;
 
+
 volatile unsigned int counter = 0;
 volatile float currentinHg = 30.01;
+
+
+
+// Decide which parameters you want to send by setting these values to true or false
+bool sendAirSpeed = false;
+bool sendVerticalSpeed = true;
+bool sendTurnRate = true;
+bool sendLateralAcceleration = true;
+bool sendCylinderHeadTemperature = true;
+bool sendExhaustGasTemperature = true;
+bool sendRPM = true;
+bool sendMAP = true;
+bool sendOilTemp = true;
+bool sendOilPressure = true;
+bool sendAltimeterSetting = true;
+bool sendIndicatedAltitude = true;
+bool sendFuelQuantity = true;
+bool sendFuelFlow = true;
+bool sendFuelPressure = true;
+bool sendVoltage = true;
+bool sendAmps = true;
+bool sendHeading = false;
+bool sendPitch = false;
+bool sendRoll = false;
 
 
 void setup() {
@@ -81,7 +106,7 @@ void loop() {
   // than 150ms, run this block again. If not, don't do anything.
   if (now - lasttime > messagedelay) {
 
-    Serial.println("Doing something ...");
+    //Serial.println("Doing something ...");
 
     // First, let's look at the countup[0] variable. The [0] shows that this
     // is an "array" of countup values (e.g. there is more than one that use 
@@ -190,9 +215,9 @@ void loop() {
     // Now that our CFParameter named "pIndicatedAirspeed" is complete, we'll send it out to the CAN bus where the FiX Gateway will
     // injest it and the pyEfis screen will display it.
     
-    cf.sendParam(pIndicatedAirspeed);
+    if (sendAirSpeed) { cf.sendParam(pIndicatedAirspeed); }
     delay(100);
-    Serial.println(airspeed);
+    // Serial.println(airspeed);
 
     // Now we're just using the exact same data, but changing the type from IAS to True Airspeed (TAS) and resending it.
     // Note, IAS and TAS are likely not the same, depending on your altitude and air density. This is only a demonstration of
@@ -252,7 +277,7 @@ void loop() {
 
     // Send the message to the CAN bus
     
-    // cf.sendParam(pVerticalSpeed);
+    if(sendVerticalSpeed) cf.sendParam(pVerticalSpeed);
 
     
     if (turnrate <= -10) {
@@ -275,7 +300,7 @@ void loop() {
     pTurnRate.data[2] = turnrate>>16;
     pTurnRate.data[3] = turnrate>>24;
     pTurnRate.length = 7;
-    // cf.sendParam(pTurnRate);
+    if(sendTurnRate) cf.sendParam(pTurnRate);
 
 
     if (lateralacceleration < -250.0) countup[3] = true;
@@ -292,7 +317,7 @@ void loop() {
     pLateralAcceleration.data[2] = lateralacceleration>>16;
     pLateralAcceleration.data[3] = lateralacceleration>>24;
     pLateralAcceleration.length = 7;
-    // cf.sendParam(pLateralAcceleration);
+    if (sendLateralAcceleration) cf.sendParam(pLateralAcceleration);
 
 
 
@@ -325,28 +350,28 @@ void loop() {
     pCylinderHeadTemperature.data[2] = cylinderheadtemperature[0]>>16;
     pCylinderHeadTemperature.data[3] = cylinderheadtemperature[0]>>24;
     pCylinderHeadTemperature.length = 7;
-    // cf.sendParam(pCylinderHeadTemperature);
+    if (sendCylinderHeadTemperature) cf.sendParam(pCylinderHeadTemperature);
 
     pCylinderHeadTemperature.index = 0x01;
     pCylinderHeadTemperature.data[0] = cylinderheadtemperature[1];
     pCylinderHeadTemperature.data[1] = cylinderheadtemperature[1]>>8;
     pCylinderHeadTemperature.data[2] = cylinderheadtemperature[1]>>16;
     pCylinderHeadTemperature.data[3] = cylinderheadtemperature[1]>>24;
-    // cf.sendParam(pCylinderHeadTemperature);
+    if (sendCylinderHeadTemperature) cf.sendParam(pCylinderHeadTemperature);
 
     pCylinderHeadTemperature.index = 0x02;
     pCylinderHeadTemperature.data[0] = cylinderheadtemperature[2];
     pCylinderHeadTemperature.data[1] = cylinderheadtemperature[2]>>8;
     pCylinderHeadTemperature.data[2] = cylinderheadtemperature[2]>>16;
     pCylinderHeadTemperature.data[3] = cylinderheadtemperature[2]>>24;
-    // cf.sendParam(pCylinderHeadTemperature);
+    if (sendCylinderHeadTemperature) cf.sendParam(pCylinderHeadTemperature);
 
     pCylinderHeadTemperature.index = 0x03;
     pCylinderHeadTemperature.data[0] = cylinderheadtemperature[3];
     pCylinderHeadTemperature.data[1] = cylinderheadtemperature[3]>>8;
     pCylinderHeadTemperature.data[2] = cylinderheadtemperature[3]>>16;
     pCylinderHeadTemperature.data[3] = cylinderheadtemperature[3]>>24;
-    // cf.sendParam(pCylinderHeadTemperature);
+    if (sendCylinderHeadTemperature) cf.sendParam(pCylinderHeadTemperature);
 
 
 
@@ -380,28 +405,28 @@ void loop() {
     pExhaustGasTemperature.data[2] = exhaustgastemperature[0]>>16;
     pExhaustGasTemperature.data[3] = exhaustgastemperature[0]>>24;
     pExhaustGasTemperature.length = 7;
-    // cf.sendParam(pExhaustGasTemperature);
+    if (sendExhaustGasTemperature) cf.sendParam(pExhaustGasTemperature);
 
     pExhaustGasTemperature.index = 0x01;
     pExhaustGasTemperature.data[0] = exhaustgastemperature[1];
     pExhaustGasTemperature.data[1] = exhaustgastemperature[1]>>8;
     pExhaustGasTemperature.data[2] = exhaustgastemperature[1]>>16;
     pExhaustGasTemperature.data[3] = exhaustgastemperature[1]>>24;
-    // cf.sendParam(pExhaustGasTemperature);
+    if (sendExhaustGasTemperature) cf.sendParam(pExhaustGasTemperature);
 
     pExhaustGasTemperature.index = 0x02;
     pExhaustGasTemperature.data[0] = exhaustgastemperature[2];
     pExhaustGasTemperature.data[1] = exhaustgastemperature[2]>>8;
     pExhaustGasTemperature.data[2] = exhaustgastemperature[2]>>16;
     pExhaustGasTemperature.data[3] = exhaustgastemperature[2]>>24;
-    // cf.sendParam(pExhaustGasTemperature);
+    if (sendExhaustGasTemperature) cf.sendParam(pExhaustGasTemperature);
 
     pExhaustGasTemperature.index = 0x03;
     pExhaustGasTemperature.data[0] = exhaustgastemperature[3];
     pExhaustGasTemperature.data[1] = exhaustgastemperature[3]>>8;
     pExhaustGasTemperature.data[2] = exhaustgastemperature[3]>>16;
     pExhaustGasTemperature.data[3] = exhaustgastemperature[3]>>24;
-    // cf.sendParam(pExhaustGasTemperature);
+    if (sendExhaustGasTemperature) cf.sendParam(pExhaustGasTemperature);
 
 
 
@@ -421,16 +446,16 @@ void loop() {
     pRPM.data[2] = rpm>>16;
     pRPM.data[3] = rpm>>24;
     pRPM.length = 7;
-    // cf.sendParam(pRPM);
+    if (sendRPM) cf.sendParam(pRPM);
 
     CFParameter pMAP;
-    pRPM.type = 0x21E;
-    pRPM.index = 0x00;
-    pRPM.fcb = 0x00;
-    pRPM.data[0] = 2987;
-    pRPM.data[1] = 2987>>8;
-    pRPM.length = 5;
-    // cf.sendParam(pRPM);
+    pMAP.type = 0x21E;
+    pMAP.index = 0x00;
+    pMAP.fcb = 0x00;
+    pMAP.data[0] = 2685;
+    pMAP.data[1] = 2685>>8;
+    pMAP.length = 5;
+    if (sendMAP) cf.sendParam(pMAP);
 
     float oiltemperature = bmp.readTemperature();
     unsigned int oiltemp = oiltemperature * 10;
@@ -441,7 +466,7 @@ void loop() {
     pOilTemp.data[0] = oiltemp;
     pOilTemp.data[1] = oiltemp>>8;
     pOilTemp.length = 5;
-    // cf.sendParam(pOilTemp);
+    if (sendOilTemp) cf.sendParam(pOilTemp);
 
 
     if (oilpressure < 3000) countup[7] = true;
@@ -458,7 +483,7 @@ void loop() {
     pOilPressure.data[0] = oilpressure;
     pOilPressure.data[1] = oilpressure>>8;
     pOilPressure.length = 5;
-    // cf.sendParam(pOilPressure);
+    if (sendOilPressure) cf.sendParam(pOilPressure);
 
 
     // float currentinHg = 30.01;
@@ -473,7 +498,7 @@ void loop() {
     pAltimeterSetting.data[0] = altimeterSetting;
     pAltimeterSetting.data[1] = altimeterSetting>>8;
     pAltimeterSetting.length = 5;
-    // cf.sendParam(pAltimeterSetting);
+    if (sendAltimeterSetting) cf.sendParam(pAltimeterSetting);
 
     float meters = bmp.readAltitude(currentMillibars);
 
@@ -496,7 +521,7 @@ void loop() {
     pIndicatedAltitude.data[2] = indicatedAltitude>>16;
     pIndicatedAltitude.data[3] = indicatedAltitude>>24;
     pIndicatedAltitude.length = 7;
-    cf.sendParam(pIndicatedAltitude);
+    if (sendIndicatedAltitude) cf.sendParam(pIndicatedAltitude);
 
 
     if (fuelquantity < 1) countup[8] = true;
@@ -514,10 +539,10 @@ void loop() {
     pFuelQuantity.data[2] = fuelquantity>>16;
     pFuelQuantity.data[3] = fuelquantity>>24;
     pFuelQuantity.length = 7;
-    // cf.sendParam(pFuelQuantity);
+    if (sendFuelQuantity) cf.sendParam(pFuelQuantity);
 
     pFuelQuantity.type = 0x227; // Right Fuel Tank
-    // cf.sendParam(pFuelQuantity);
+    if (sendFuelQuantity) cf.sendParam(pFuelQuantity);
 
 
 
@@ -536,7 +561,7 @@ void loop() {
     pFuelFlow.data[2] = fuelflow>>16;
     pFuelFlow.data[3] = fuelflow>>24;
     pFuelFlow.length = 7;
-    // cf.sendParam(pFuelFlow);
+    if (sendFuelFlow) cf.sendParam(pFuelFlow);
 
     
 
@@ -555,7 +580,7 @@ void loop() {
     pFuelPressure.data[2] = fuelpressure>>16;
     pFuelPressure.data[3] = fuelpressure>>24;
     pFuelPressure.length = 7;
-    // cf.sendParam(pFuelPressure);
+    if (sendFuelPressure) cf.sendParam(pFuelPressure);
 
 
     if (voltage < 10) countup[11] = true;
@@ -573,7 +598,7 @@ void loop() {
     pVoltage.data[2] = voltage>>16;
     pVoltage.data[3] = voltage>>24;
     pVoltage.length = 7;
-    // cf.sendParam(pVoltage);
+    if (sendVoltage) cf.sendParam(pVoltage);
 
 
     if (amps < 150) countup[12] = true;
@@ -591,7 +616,7 @@ void loop() {
     pAmps.data[2] = amps>>16;
     pAmps.data[3] = amps>>24;
     pAmps.length = 7;
-    // cf.sendParam(pAmps);
+    if (sendAmps) cf.sendParam(pAmps);
 
 
 
@@ -616,7 +641,7 @@ void loop() {
     pHeading.data[2] = heading>>16;
     pHeading.data[3] = heading>>24;
     pHeading.length = 7;
-    // cf.sendParam(pHeading);
+    if (sendHeading) cf.sendParam(pHeading);
     delay(5);
 
     // Serial.print ("heading: ");
@@ -662,7 +687,7 @@ void loop() {
     pPitch.data[2] = pitch>>16;
     pPitch.data[3] = pitch>>24;
     pPitch.length = 7;
-    // cf.sendParam(pPitch);
+    if (sendPitch) cf.sendParam(pPitch);
 
     // Serial.print("pitch: ");
     // Serial.println(pitch);
@@ -684,7 +709,7 @@ void loop() {
     pRoll.data[2] = roll>>16;
     pRoll.data[3] = roll>>24;
     pRoll.length = 7;
-    // cf.sendParam(pRoll);
+    if (sendRoll) cf.sendParam(pRoll);
     delay(5);
 
     // Serial.print("roll: ");

@@ -107,7 +107,6 @@ void loop() {
   // If this message is received, this code block will decipher it and use the current
   // pitchAngle value to set the values permanently in the EEPROM
   if (!digitalRead(CAN0_INT)) {
-    Serial.println("I read something ...");
     
     // read the message and assign parts to the variables above
     CAN0.readMsgBuf(&rxId, &len, rxBuf);
